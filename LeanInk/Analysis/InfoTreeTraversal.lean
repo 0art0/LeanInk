@@ -21,64 +21,6 @@ open IO
 
 set_option autoImplicit false
 
-structure ContextBasedInfo (β : Type) where
-  ctx : ContextInfo
-  info : β
-
-inductive TraversalFragment where
-| tactic (info: ContextBasedInfo TacticInfo)
-| term (info: ContextBasedInfo TermInfo)
-| field (info: ContextBasedInfo FieldInfo)
-| unknown (info: ContextBasedInfo ElabInfo)
-
-namespace TraversalFragment
-  def headPos : TraversalFragment -> String.Pos
-  | term fragment => (fragment.info.toElabInfo.stx.getPos? false).getD 0
-  | field fragment => (fragment.info.stx.getPos? false).getD 0
-  | tactic fragment => (fragment.info.toElabInfo.stx.getPos? false).getD 0
-  | unknown fragment => (fragment.info.stx.getPos? false).getD 0
-
-  def tailPos : TraversalFragment -> String.Pos
-  | term fragment => (fragment.info.toElabInfo.stx.getTailPos? false).getD 0
-  | field fragment => (fragment.info.stx.getTailPos? false).getD 0
-  | tactic fragment => (fragment.info.toElabInfo.stx.getTailPos? false).getD 0
-  | unknown fragment => (fragment.info.stx.getTailPos? false).getD 0
-
-  def create (ctx : ContextInfo) (info : Info) : AnalysisM ((Option TraversalFragment) × (Option SemanticTraversalInfo)) := do
-    if Info.isExpanded info then
-      pure (none, none)
-    else
-      let mut semantic : Option SemanticTraversalInfo := none 
-      if (← read).experimentalSemanticType then
-        semantic := some { node := info, stx := info.stx }
-      match info with 
-      | Info.ofTacticInfo info => pure (tactic { info := info, ctx := ctx }, semantic)
-      | Info.ofTermInfo info => pure (term { info := info, ctx := ctx }, semantic)
-      | Info.ofFieldInfo info => pure (field { info := info, ctx := ctx }, semantic)
-      | _ => pure (none, semantic)
-
-  def runMetaM { α : Type } (func : TraversalFragment -> MetaM α) : TraversalFragment -> AnalysisM α
-  | term fragment => fragment.ctx.runMetaM fragment.info.lctx (func (term fragment))
-  | field fragment => fragment.ctx.runMetaM fragment.info.lctx (func (field fragment))
-  | tactic fragment => fragment.ctx.runMetaM {} (func (tactic fragment))
-  | unknown fragment => fragment.ctx.runMetaM {} (func (unknown fragment))
-
-  /- Sentence Generation -/
-  private def genGoal (goalType : Format) (hypotheses : List Hypothesis): Name -> MetaM (Goal)
-    | Name.anonymous => do
-      return { 
-        name := ""
-        conclusion := toString goalType
-        hypotheses := hypotheses 
-      }
-    | name => do
-      let goalFormatName := format name.eraseMacroScopes
-      return { 
-        name := toString goalFormatName
-        conclusion := toString goalType
-        hypotheses := hypotheses 
-      }
-
 #check Meta.ppGoal
 
 /- Traversal -/
@@ -144,11 +86,7 @@ partial def _resolveTacticList (ctx?: Option ContextInfo := none) (aux : Travers
       let ctx? := info.updateContext? ctx
       let resolvedChildrenLeafs ← children.toList.mapM <| _resolveTacticList ctx? aux
       let sortedChildrenLeafs := resolvedChildrenLeafs.foldl TraversalAux.merge {}
-      match (← TraversalFragment.create ctx info) with
-      | (some fragment, some semantic) => pure sortedChildrenLeafs        
-      | (some fragment, none) => pure sortedChildrenLeafs       
-      | (none, some semantic) => pure sortedChildrenLeafs
-      | (_, _) => pure sortedChildrenLeafs
+      pure sortedChildrenLeafs
     | none => pure aux
   | _ => pure aux
 
