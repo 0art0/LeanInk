@@ -1,6 +1,9 @@
+import LeanInk.Annotation.DataTypes
+
 namespace LeanInk
 
 open System
+open LeanInk.Annotation
 
 structure Configuration where
   inputFilePath : FilePath
