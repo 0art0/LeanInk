@@ -46,6 +46,7 @@ partial def _isCalcTatic (tree: InfoTree) : Bool :=
       false
   | _ => false
 
+--!
 def _buildInfoTreeContext (config : Configuration) (tree : InfoTree) : InfoTreeContext := 
   let hasSorry := config.experimentalSorryConfig && (_hasSorry tree)
   let isCalcTatic := config.experimentalCalcConfig && (_isCalcTatic tree)
@@ -95,51 +96,6 @@ namespace TraversalFragment
   | field fragment => fragment.ctx.runMetaM fragment.info.lctx (func (field fragment))
   | tactic fragment => fragment.ctx.runMetaM {} (func (tactic fragment))
   | unknown fragment => fragment.ctx.runMetaM {} (func (unknown fragment))
-
-  /- 
-    Token Generation
-  -/
-  def inferType? : TraversalFragment -> MetaM (Option String)
-    | term termFragment => do
-      -- This call requires almost half of the runtime of the tree traversal.
-      let format ← try Meta.ppExpr (← Meta.inferType termFragment.info.expr) catch e => e.toMessageData.toString
-      return s!"{format}"
-    | _ => pure none
-
-  def genDocString? (self : TraversalFragment) : MetaM (Option String) := do
-    let env ← getEnv
-    match self with
-    | term fragment =>
-      if let some name := fragment.info.expr.constName? then
-        findDocString? env name
-      else
-        pure none
-    | field fragment => findDocString? env fragment.info.projName
-    | tactic fragment =>
-      let elabInfo := fragment.info.toElabInfo
-      return ← findDocString? env elabInfo.elaborator <||> findDocString? env elabInfo.stx.getKind
-    | unknown fragment =>
-      let elabInfo := fragment.info
-      return ← findDocString? env elabInfo.elaborator <||> findDocString? env elabInfo.stx.getKind
-
-  def genTypeTokenInfo? (self : TraversalFragment) : AnalysisM (Option TypeTokenInfo) := do
-    let mut docString : Option String := none
-    let mut type : Option String := none
-    let config ← read
-    if config.experimentalDocString then
-      docString ← runMetaM (genDocString?) self
-    if config.experimentalTypeInfo then
-      type ← runMetaM (inferType?) self
-    if type == none ∧ docString == none then
-      return none
-    else
-      return some { headPos := self.headPos, tailPos := self.tailPos, type := type, docString := docString }
-
-  def genTokens (self : TraversalFragment) : AnalysisM (List Token) := do
-    let mut tokens : List Token := []
-    if let some typeToken ← self.genTypeTokenInfo? then
-      tokens := tokens.append [Token.type typeToken]
-    return tokens
 
   /- Sentence Generation -/
   private def genGoal (goalType : Format) (hypotheses : List Hypothesis): Name -> MetaM (Goal)
@@ -252,19 +208,6 @@ namespace AnalysisResult
     sentences := List.mergeSortedLists (λ x y => x.toFragment.headPos < y.toFragment.headPos) x.sentences y.sentences
   }
 
-  def insertTokens (self : AnalysisResult) (tokens : List Token) :  AnalysisResult := merge self { tokens := tokens, sentences := [] }
-
-  def insertFragment (self : AnalysisResult) (fragment : TraversalFragment) (infoTreeCtx : InfoTreeContext) : AnalysisM AnalysisResult := do
-    let newTokens : List Token := ← fragment.genTokens
-    let newSentences ← fragment.genSentences infoTreeCtx
-    pure { self with tokens := self.tokens.append newTokens, sentences := self.sentences.append newSentences }
-
-  def insertSemanticInfo (self : AnalysisResult) (info: SemanticTraversalInfo) : AnalysisM AnalysisResult := do
-    if (← read).experimentalSemanticType then
-      pure { self with tokens := self.tokens ++ (← info._resolveSemanticTokens []) }
-    else
-      return self
-
   def Position.toStringPos (fileMap: FileMap) (pos: Lean.Position) : String.Pos :=
     FileMap.lspPosToUtf8Pos fileMap (fileMap.leanPosToLspPos pos)
 
@@ -301,37 +244,9 @@ namespace TraversalAux
     result := AnalysisResult.merge x.result y.result
   }
 
-  def insertFragment (self : TraversalAux) (fragment : TraversalFragment) (infoTreeCtx : InfoTreeContext) : AnalysisM TraversalAux := do
-    match fragment with
-    | TraversalFragment.term _ => do
-      if self.allowsNewTerm then
-        let newResult ← self.result.insertFragment fragment infoTreeCtx
-        return { self with allowsNewTerm := false, result := newResult }
-      else 
-        return self
-    | TraversalFragment.field _ => do
-      if self.allowsNewField then
-        let newResult ← self.result.insertFragment fragment infoTreeCtx
-        return { self with allowsNewField := false, result := newResult }
-      else 
-        return self
-    | TraversalFragment.tactic contextInfo => do
-      let tacticChildren := self.result.sentences.filterMap (λ f => f.asTactic?)
-      if tacticChildren.any (λ t => t.headPos == fragment.headPos && t.tailPos == fragment.tailPos) then
-        return self
-      else
-        let newResult ← self.result.insertFragment fragment infoTreeCtx
-        return { self with result := newResult }
-    | _ => pure self
-
-    def insertSemanticInfo (self : TraversalAux) (info : SemanticTraversalInfo) : AnalysisM TraversalAux := do
-      if self.allowsNewSemantic then
-        let newResult ← self.result.insertSemanticInfo info
-        return { self with allowsNewSemantic := false,  result := newResult }
-      else
-        return self
 end TraversalAux
 
+--!
 partial def _resolveTacticList (ctx?: Option ContextInfo := none) (aux : TraversalAux := {}) (tree : InfoTree) (infoTreeCtx : InfoTreeContext) : AnalysisM TraversalAux := do
   let config ← read
   match tree with
@@ -343,11 +258,9 @@ partial def _resolveTacticList (ctx?: Option ContextInfo := none) (aux : Travers
       let resolvedChildrenLeafs ← children.toList.mapM (fun x => _resolveTacticList ctx? aux x (_updateIsCalcTatic config infoTreeCtx x)) 
       let sortedChildrenLeafs := resolvedChildrenLeafs.foldl TraversalAux.merge {}
       match (← TraversalFragment.create ctx info) with
-      | (some fragment, some semantic) => do
-        let sortedChildrenLeafs ← sortedChildrenLeafs.insertSemanticInfo semantic
-        sortedChildrenLeafs.insertFragment fragment infoTreeCtx         
-      | (some fragment, none) => sortedChildrenLeafs.insertFragment fragment infoTreeCtx         
-      | (none, some semantic) => sortedChildrenLeafs.insertSemanticInfo semantic
+      | (some fragment, some semantic) => pure sortedChildrenLeafs        
+      | (some fragment, none) => pure sortedChildrenLeafs       
+      | (none, some semantic) => pure sortedChildrenLeafs
       | (_, _) => pure sortedChildrenLeafs
     | none => pure aux
   | _ => pure aux
@@ -356,6 +269,7 @@ inductive TraversalEvent
 | result (r : TraversalAux)
 | error (e : IO.Error)
 
+--!
 def _resolveTask (tree : InfoTree) (infoTreeCtx : InfoTreeContext) : AnalysisM (Task TraversalEvent) := do
   let taskBody : AnalysisM TraversalEvent := do
     let res ← _resolveTacticList none {} tree infoTreeCtx
@@ -381,6 +295,7 @@ def resolveTasks (tasks : Array (Task TraversalEvent)) : AnalysisM (Option (List
     | _ => return none
   return results
 
+--!
 def resolveTacticList (trees: List InfoTree) : AnalysisM AnalysisResult := do
   let config ← read
   let tasks ← trees.toArray.mapM (λ t => _resolveTask t (_buildInfoTreeContext config t))
