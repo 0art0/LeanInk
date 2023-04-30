@@ -14,10 +14,7 @@ import Lean.Server
 
 namespace LeanInk.Analysis
 
-open Lean
-open Lean.Elab
-open Lean.Meta
-open IO
+open Lean Lean.Elab Lean.Meta IO
 
 set_option autoImplicit false
 
@@ -30,6 +27,7 @@ structure AnalysisResult where
   deriving Inhabited
 
 namespace AnalysisResult
+
   def empty : AnalysisResult := { tokens := [], sentences := [] }
 
   def merge (x y : AnalysisResult) : AnalysisResult := {
@@ -37,27 +35,6 @@ namespace AnalysisResult
     sentences := List.mergeSortedLists (λ x y => x.toFragment.headPos < y.toFragment.headPos) x.sentences y.sentences
   }
 
-  def Position.toStringPos (fileMap: FileMap) (pos: Lean.Position) : String.Pos :=
-    FileMap.lspPosToUtf8Pos fileMap (fileMap.leanPosToLspPos pos)
-
-  private def genMessage (fileMap : FileMap) (message : Lean.Message) : AnalysisM Message := do
-    let headPos := Position.toStringPos fileMap message.pos
-    let tailPos := Position.toStringPos fileMap (message.endPos.getD message.pos)
-    let mut string ← message.data.toString
-    if message.caption != "" then
-      string := message.caption ++ ":¬" ++ string
-    if message.severity == MessageSeverity.warning then
-      string := "Warning: " ++ string
-    else if message.severity == MessageSeverity.error then
-      string := "Error: " ++ string
-    return { headPos := headPos, tailPos := tailPos, msg := string }
-
-  def insertMessages (self : AnalysisResult) (messages : List Lean.Message) (fileMap : FileMap) : AnalysisM AnalysisResult := do
-    let messages ← messages.mapM (genMessage fileMap)
-    let sortedMessages := List.sort (λ x y => x.headPos < y.headPos) messages
-    let newSentences := sortedMessages.map (λ x => Sentence.message x)
-    let mergedSentences := List.mergeSortedLists (λ x y => (Positional.headPos x) < (Positional.headPos y)) newSentences self.sentences
-    return { self with sentences := mergedSentences }
 end AnalysisResult
 
 structure TraversalAux where
@@ -67,6 +44,7 @@ structure TraversalAux where
   result : AnalysisResult := AnalysisResult.empty
 
 namespace TraversalAux
+
   def merge (x y : TraversalAux) : TraversalAux := {
     allowsNewField := x.allowsNewField ∧ y.allowsNewField
     allowsNewTerm := x.allowsNewTerm ∧ y.allowsNewTerm
@@ -75,7 +53,6 @@ namespace TraversalAux
 
 end TraversalAux
 
---!
 partial def _resolveTacticList (ctx?: Option ContextInfo := none) (aux : TraversalAux := {}) (tree : InfoTree) : AnalysisM TraversalAux := do
   let config ← read
   match tree with
@@ -94,7 +71,6 @@ inductive TraversalEvent
 | result (r : TraversalAux)
 | error (e : IO.Error)
 
---!
 def _resolveTask (tree : InfoTree) : AnalysisM (Task TraversalEvent) := do
   let taskBody : AnalysisM TraversalEvent := do
     let res ← _resolveTacticList none {} tree
@@ -106,9 +82,8 @@ def _resolveTask (tree : InfoTree) : AnalysisM (Task TraversalEvent) := do
 
 def _resolve (trees: List InfoTree) : AnalysisM AnalysisResult := do
   let config ← read
-  let auxResults ← (trees.map (λ t => 
-    _resolveTacticList none {} t)).mapM (λ x => x)
-  let results := auxResults.map (λ x => x.result)
+  let auxResults ← (trees.map <| _resolveTacticList none {}).mapM id
+  let results := auxResults.map (·.result)
   return results.foldl AnalysisResult.merge AnalysisResult.empty
 
 def resolveTasks (tasks : Array (Task TraversalEvent)) : AnalysisM (Option (List TraversalAux)) := do
@@ -120,7 +95,6 @@ def resolveTasks (tasks : Array (Task TraversalEvent)) : AnalysisM (Option (List
     | _ => return none
   return results
 
---!
 def resolveTacticList (trees: List InfoTree) : AnalysisM AnalysisResult := do
   let config ← read
   let tasks ← trees.toArray.mapM (λ t => _resolveTask t)
