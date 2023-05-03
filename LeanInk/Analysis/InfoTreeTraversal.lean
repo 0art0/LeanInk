@@ -7,18 +7,9 @@ namespace LeanInk.Analysis
 open Lean Lean.Elab Lean.Meta IO
 set_option autoImplicit false
 
-structure AnalysisResult where
-  tokens : List Token
-  sentences : List Sentence
+abbrev AnalysisResult := List String
 
-def AnalysisResult.nil : AnalysisResult := { tokens := [], sentences := [] }
-
-def AnalysisResult.append (x y : AnalysisResult) : AnalysisResult := {
-    tokens := List.mergeSortedLists (λ x y => x.toFragment.headPos < y.toFragment.headPos) x.tokens y.tokens
-    sentences := List.mergeSortedLists (λ x y => x.toFragment.headPos < y.toFragment.headPos) x.sentences y.sentences
-  }
-
-partial def _resolveTacticList (ctx?: Option ContextInfo := none) (aux : AnalysisResult := AnalysisResult.nil) : InfoTree → IO AnalysisResult
+partial def _resolveTacticList (ctx?: Option ContextInfo := none) (aux : AnalysisResult := .nil) : InfoTree → IO AnalysisResult
   | InfoTree.context ctx tree => _resolveTacticList ctx aux tree -- TODO Fix
   | InfoTree.node info children => do
     match ctx? with
