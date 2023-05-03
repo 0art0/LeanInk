@@ -20,7 +20,7 @@ def AnalysisResult.merge (x y : AnalysisResult) : AnalysisResult := {
     sentences := List.mergeSortedLists (λ x y => x.toFragment.headPos < y.toFragment.headPos) x.sentences y.sentences
   }
 
-partial def _resolveTacticList (ctx?: Option ContextInfo := none) (aux : AnalysisResult := AnalysisResult.empty) : InfoTree → AnalysisM AnalysisResult
+partial def _resolveTacticList (ctx?: Option ContextInfo := none) (aux : AnalysisResult := AnalysisResult.empty) : InfoTree → IO AnalysisResult
   | InfoTree.context ctx tree => _resolveTacticList ctx aux tree -- TODO Fix
   | InfoTree.node info children => do
     match ctx? with
@@ -45,11 +45,11 @@ def _resolveTask (tree : InfoTree) : AnalysisM (Task TraversalEvent) := do
     | .ok ev => ev
     | .error e => TraversalEvent.error e
 
-def _resolve (trees : List InfoTree) : AnalysisM AnalysisResult := do
+def _resolve (trees : List InfoTree) : IO AnalysisResult := do
   let auxResults ← (trees.map <| _resolveTacticList none .empty).mapM id
   return auxResults.foldl AnalysisResult.merge AnalysisResult.empty
 
-def resolveTasks (tasks : Array (Task TraversalEvent)) : AnalysisM (Option (List AnalysisResult)) := do
+def resolveTasks (tasks : Array (Task TraversalEvent)) : IO (Option (List AnalysisResult)) := do
   let mut results : List AnalysisResult := []
   for task in tasks do
     let result ← BaseIO.toIO (IO.wait task)
