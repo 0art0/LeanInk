@@ -43,16 +43,12 @@ def _resolveTask (tree : InfoTree) : AnalysisM (Task TraversalEvent) := do
     | .ok ev => ev
     | .error e => TraversalEvent.error e
 
-def _resolve (trees : List InfoTree) : IO AnalysisResult := do
-  let auxResults ← trees.mapM <| _resolveTacticList none .empty
-  return auxResults.foldl .merge .empty
-
 def resolveTasks (tasks : List (Task TraversalEvent)) : IO <| Option (List AnalysisResult) := do
   let mut results : List AnalysisResult := []
   for task in tasks do
     let result ← BaseIO.toIO (IO.wait task)
     match result with
-    | TraversalEvent.result r => results := r::results
+    | .result r => results := r::results
     | _ => return none
   return results
 
