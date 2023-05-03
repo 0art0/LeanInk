@@ -11,21 +11,21 @@ structure AnalysisResult where
   tokens : List Token
   sentences : List Sentence
 
-def AnalysisResult.empty : AnalysisResult := { tokens := [], sentences := [] }
+def AnalysisResult.nil : AnalysisResult := { tokens := [], sentences := [] }
 
-def AnalysisResult.merge (x y : AnalysisResult) : AnalysisResult := {
+def AnalysisResult.append (x y : AnalysisResult) : AnalysisResult := {
     tokens := List.mergeSortedLists (λ x y => x.toFragment.headPos < y.toFragment.headPos) x.tokens y.tokens
     sentences := List.mergeSortedLists (λ x y => x.toFragment.headPos < y.toFragment.headPos) x.sentences y.sentences
   }
 
-partial def _resolveTacticList (ctx?: Option ContextInfo := none) (aux : AnalysisResult := AnalysisResult.empty) : InfoTree → IO AnalysisResult
+partial def _resolveTacticList (ctx?: Option ContextInfo := none) (aux : AnalysisResult := AnalysisResult.nil) : InfoTree → IO AnalysisResult
   | InfoTree.context ctx tree => _resolveTacticList ctx aux tree -- TODO Fix
   | InfoTree.node info children => do
     match ctx? with
     | some ctx => do
       let ctx? := info.updateContext? ctx
       let resolvedChildrenLeafs ← children.toList.mapM <| _resolveTacticList ctx? aux
-      let sortedChildrenLeafs := resolvedChildrenLeafs.foldl .merge .empty
+      let sortedChildrenLeafs := resolvedChildrenLeafs.foldl .append .nil
       pure sortedChildrenLeafs
     | none => pure aux
   | _ => pure aux
@@ -36,7 +36,7 @@ inductive TraversalEvent
 
 def _resolveTask (tree : InfoTree) : AnalysisM (Task TraversalEvent) := do
   let taskBody : AnalysisM TraversalEvent :=
-    _resolveTacticList none .empty tree >>= pure ∘ .result
+    _resolveTacticList none .nil tree >>= pure ∘ .result
   let task ← IO.asTask (taskBody $ ← read)
   return task.map fun
     | .ok ev => ev
@@ -55,5 +55,5 @@ def resolveTacticList (trees: List InfoTree) : AnalysisM AnalysisResult := do
   let tasks ← trees.mapM _resolveTask
   match (← resolveTasks tasks) with
   | some auxResults =>
-    return auxResults.foldl .merge .empty
-  | _ => return { tokens := [], sentences := [] }
+    return auxResults.foldl .append .nil
+  | _ => return .nil
