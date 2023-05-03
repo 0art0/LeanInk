@@ -5,13 +5,11 @@ import LeanInk.Configuration
 namespace LeanInk.Analysis
 
 open Lean Lean.Elab Lean.Meta IO
-
 set_option autoImplicit false
 
 structure AnalysisResult where
   tokens : List Token
   sentences : List Sentence
-  deriving Inhabited
 
 def AnalysisResult.empty : AnalysisResult := { tokens := [], sentences := [] }
 
@@ -46,10 +44,10 @@ def _resolveTask (tree : InfoTree) : AnalysisM (Task TraversalEvent) := do
     | .error e => TraversalEvent.error e
 
 def _resolve (trees : List InfoTree) : IO AnalysisResult := do
-  let auxResults ← (trees.map <| _resolveTacticList none .empty).mapM id
-  return auxResults.foldl AnalysisResult.merge AnalysisResult.empty
+  let auxResults ← trees.mapM <| _resolveTacticList none .empty
+  return auxResults.foldl .merge .empty
 
-def resolveTasks (tasks : Array (Task TraversalEvent)) : IO (Option (List AnalysisResult)) := do
+def resolveTasks (tasks : List (Task TraversalEvent)) : IO <| Option (List AnalysisResult) := do
   let mut results : List AnalysisResult := []
   for task in tasks do
     let result ← BaseIO.toIO (IO.wait task)
@@ -59,8 +57,8 @@ def resolveTasks (tasks : Array (Task TraversalEvent)) : IO (Option (List Analys
   return results
 
 def resolveTacticList (trees: List InfoTree) : AnalysisM AnalysisResult := do
-  let tasks ← trees.toArray.mapM _resolveTask
+  let tasks ← trees.mapM _resolveTask
   match (← resolveTasks tasks) with
-  | some auxResults => do
-    return auxResults.foldl AnalysisResult.merge AnalysisResult.empty
-  | _ => return { tokens := [], sentences := []}
+  | some auxResults =>
+    return auxResults.foldl .merge .empty
+  | _ => return { tokens := [], sentences := [] }
