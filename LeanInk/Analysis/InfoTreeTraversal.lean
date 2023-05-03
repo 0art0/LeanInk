@@ -35,20 +35,19 @@ inductive TraversalEvent
 | error (e : IO.Error)
 
 def _resolveTask (tree : InfoTree) : AnalysisM (Task TraversalEvent) := do
-  let taskBody : AnalysisM TraversalEvent := do
-    let res ← _resolveTacticList none .empty tree
-    return TraversalEvent.result res
+  let taskBody : AnalysisM TraversalEvent :=
+    _resolveTacticList none .empty tree >>= pure ∘ .result
   let task ← IO.asTask (taskBody $ ← read)
   return task.map fun
     | .ok ev => ev
-    | .error e => TraversalEvent.error e
+    | .error e => .error e
 
 def resolveTasks (tasks : List (Task TraversalEvent)) : IO <| Option (List AnalysisResult) := do
   let mut results : List AnalysisResult := []
   for task in tasks do
-    let result ← BaseIO.toIO (IO.wait task)
+    let result ← BaseIO.toIO <| IO.wait task
     match result with
-    | .result r => results := r::results
+    | .result r => results := r :: results
     | _ => return none
   return results
 
