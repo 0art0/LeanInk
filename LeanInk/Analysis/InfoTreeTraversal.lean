@@ -1,16 +1,6 @@
-import Init.System.IO
-import Init.Control.Except
-
-import LeanInk.Analysis.DataTypes
-import LeanInk.Analysis.SemanticToken
-
-import LeanInk.ListUtil
+import Init
+import Lean
 import LeanInk.Configuration
-
-import Lean.Elab
-import Lean.Data.Lsp
-import Lean.Syntax
-import Lean.Server
 
 namespace LeanInk.Analysis
 
@@ -18,30 +8,21 @@ open Lean Lean.Elab Lean.Meta IO
 
 set_option autoImplicit false
 
-#check Meta.ppGoal
-
-/- Traversal -/
 structure AnalysisResult where
   tokens : List Token
   sentences : List Sentence
   deriving Inhabited
 
-namespace AnalysisResult
+def AnalysisResult.empty : AnalysisResult := { tokens := [], sentences := [] }
 
-  def empty : AnalysisResult := { tokens := [], sentences := [] }
-
-  def merge (x y : AnalysisResult) : AnalysisResult := {
+def AnalysisResult.merge (x y : AnalysisResult) : AnalysisResult := {
     tokens := List.mergeSortedLists (λ x y => x.toFragment.headPos < y.toFragment.headPos) x.tokens y.tokens
     sentences := List.mergeSortedLists (λ x y => x.toFragment.headPos < y.toFragment.headPos) x.sentences y.sentences
   }
 
-end AnalysisResult
-
-partial def _resolveTacticList (ctx?: Option ContextInfo := none) (aux : AnalysisResult := AnalysisResult.empty) (tree : InfoTree) : AnalysisM AnalysisResult := do
-  let config ← read
-  match tree with
+partial def _resolveTacticList (ctx?: Option ContextInfo := none) (aux : AnalysisResult := AnalysisResult.empty) : InfoTree → AnalysisM AnalysisResult
   | InfoTree.context ctx tree => _resolveTacticList ctx aux tree -- TODO Fix
-  | InfoTree.node info children =>
+  | InfoTree.node info children => do
     match ctx? with
     | some ctx => do
       let ctx? := info.updateContext? ctx
@@ -61,11 +42,10 @@ def _resolveTask (tree : InfoTree) : AnalysisM (Task TraversalEvent) := do
     return TraversalEvent.result res
   let task ← IO.asTask (taskBody $ ← read)
   return task.map fun
-    | Except.ok ev => ev
-    | Except.error e => TraversalEvent.error e
+    | .ok ev => ev
+    | .error e => TraversalEvent.error e
 
-def _resolve (trees: List InfoTree) : AnalysisM AnalysisResult := do
-  let config ← read
+def _resolve (trees : List InfoTree) : AnalysisM AnalysisResult := do
   let auxResults ← (trees.map <| _resolveTacticList none .empty).mapM id
   return auxResults.foldl AnalysisResult.merge AnalysisResult.empty
 
@@ -79,7 +59,6 @@ def resolveTasks (tasks : Array (Task TraversalEvent)) : AnalysisM (Option (List
   return results
 
 def resolveTacticList (trees: List InfoTree) : AnalysisM AnalysisResult := do
-  let config ← read
   let tasks ← trees.toArray.mapM _resolveTask
   match (← resolveTasks tasks) with
   | some auxResults => do
