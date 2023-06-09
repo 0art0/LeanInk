@@ -14,9 +14,14 @@ open Lean Elab System
 def analyzeInput (file : System.FilePath) (fileContents : String) : IO (List TacticFragmentWithContent) := do
   let context := Parser.mkInputContext fileContents file.toString
   let (header, state, messages) ← Parser.parseHeader context
+  let fileContents' := 
+    fileContents.extract ⟨0⟩ state.pos ++ 
+    "\nset_option tactic.simp.trace true\n" ++ 
+    fileContents.extract state.pos fileContents.endPos
+  let context' := Parser.mkInputContext fileContents' file.toString
   initializeLakeContext lakeFile header
   let options := Options.empty |>.setBool `trace.Elab.info true |>.setBool `tactic.simp.trace true
-  let (environment, messages) ← processHeader header options messages context 0
+  let (environment, messages) ← processHeader header options messages context' 0
   logInfo s!"Header: {environment.header.mainModule}"
   logInfo s!"Header: {environment.header.moduleNames}"
   if messages.hasErrors then
@@ -25,15 +30,13 @@ def analyzeInput (file : System.FilePath) (fileContents : String) : IO (List Tac
         let _ ← logError <$> msg.toString
     throw <| IO.userError "Errors during import; aborting"
   let commandState := { Command.mkState environment messages with infoState := { enabled := true } }
-  let s ← IO.processCommands context state commandState
+  let s ← IO.processCommands context' state commandState
   let result ← resolveTacticList s.commandState.infoState.trees.toList
-  let annotation := result.map <| TacticFragment.withContent fileContents
+  let annotation := result.map <| TacticFragment.withContent fileContents'
   let messages := s.commandState.messages.msgs.toList.filter (·.endPos.isSome)
   for msg in messages do
     IO.println <| ← msg.toString
   return annotation
-
-#check Core.getMessageLog
 
 def runAnalysis (file : System.FilePath) (fileContents : String) : IO UInt32 := do
   -- logInfo s!"Starting process with lean file: {config.inputFileName}"
