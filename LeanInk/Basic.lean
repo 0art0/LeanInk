@@ -32,11 +32,8 @@ def analyzeInput (file : System.FilePath) (fileContents : String) : IO (List Tac
   let commandState := { Command.mkState environment messages with infoState := { enabled := true } }
   let s ← IO.processCommands context' state commandState
   let result ← resolveTacticList s.commandState.infoState.trees.toList
-  let annotation := result.map <| TacticFragment.withContent fileContents'
   let messages := s.commandState.messages.msgs.toList.filter (·.endPos.isSome)
-  for msg in messages do
-    IO.println <| ← msg.toString
-  return annotation
+  result.mapM <| TacticFragment.withContent fileContents' messages
 
 def runAnalysis (file : System.FilePath) (fileContents : String) : IO UInt32 := do
   -- logInfo s!"Starting process with lean file: {config.inputFileName}"

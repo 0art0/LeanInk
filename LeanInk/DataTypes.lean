@@ -30,15 +30,21 @@ structure TacticFragmentWithContent extends TacticFragment where
   content : String
   deriving Inhabited, ToJson
 
-def extractSuggestion (msg : Message) : IO (Option String) := do
+def extractSuggestion (msg : Message) : OptionT IO String := do
   let raw ← msg.data.toString
-  return do
-    guard <| raw.startsWith "Try this: "
-    return raw.drop "Try this: ".length
+  guard <| raw.startsWith "Try this: "
+  return raw.drop "Try this: ".length
 
-def TacticFragment.withContent (contents : String) (fragment : TacticFragment) : TacticFragmentWithContent :=
-  ⟨fragment, contents.extract fragment.headPos fragment.tailPos⟩
-
+open FileMap in
+def TacticFragment.withContent (contents : String) (messages : List Message) (fragment : TacticFragment) : IO TacticFragmentWithContent := do
+  let fileMap := ofString contents
+  let msgContent? : Option String ← OptionT.run do
+    let suggestion := messages.find? <| fun msg ↦ 
+      msg.pos = fileMap.toPosition fragment.headPos && 
+      msg.endPos = some (fileMap.toPosition fragment.tailPos)
+    (.ok suggestion : OptionT IO Message) >>= extractSuggestion
+  return ⟨fragment, msgContent?.getD (contents.extract fragment.headPos fragment.tailPos)⟩
+  
 /- InfoTree -/
 def Info.isExpanded (self : Info) : Bool :=
   let stx := Info.stx self
