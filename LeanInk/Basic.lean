@@ -42,7 +42,7 @@ def runAnalysis (file : System.FilePath) (fileContents : String) : IO UInt32 := 
   logInfo "Outputting..."
   let rawContents := toJson result |>.pretty
   let dirEntry : IO.FS.DirEntry := { 
-    root := ← IO.currentDir,
+    root := "TacticExtractionData",
     fileName := file.toString ++ ".json"
   }
   IO.FS.writeFile dirEntry.path rawContents
