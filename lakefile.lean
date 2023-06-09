@@ -4,6 +4,7 @@ open System Lake DSL
 open System.FilePath IO IO.FS
 
 package leanInk where
+  precompileModules := true
 
 lean_lib LeanInk where
 
@@ -11,3 +12,6 @@ lean_lib LeanInk where
 lean_exe leanInk where
   root := `LeanInk
   supportInterpreter := true
+
+require mathlib from git
+  "https://github.com/leanprover-community/mathlib4.git"@"master"
