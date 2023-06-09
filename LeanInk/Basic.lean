@@ -83,9 +83,8 @@ def mathlibExtract (dir : FilePath := "./lake-packages/mathlib/Mathlib/") : IO U
   let files := (← System.FilePath.walkDir dir).filter (·.extension = some "lean")
   let tasks ← files.mapM (IO.asTask <| LeanInk.Analysis.execAux ·.toString)
 
-  LeanInk.Analysis.enableInitializersExecutionWrapper
-
   for task in tasks do
-    if let .error e := (← IO.wait task) then throw e
+    if let .error e := (← IO.wait task) then 
+      throw e
   
   return 0
