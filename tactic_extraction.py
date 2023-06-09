@@ -13,7 +13,7 @@ def find_lean_files(directory):
                 lean_files.append(os.path.join(root, file))
     return lean_files
 
-repository_path = './lake-packages/mathlib/Mathlib/ModelTheory/'
+repository_path = './lake-packages/mathlib/Mathlib/'
 
 def process_file(file):
     command = ['./build/bin/leanInk', file]
