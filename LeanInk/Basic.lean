@@ -41,8 +41,8 @@ def runAnalysis (file : System.FilePath) (fileContents : String) : IO UInt32 := 
   let result ← analyzeInput file fileContents
   logInfo "Outputting..."
   let rawContents := toJson result |>.compress
-  let .some fileName := file.fileName | IO.throwServerError s!"Invalid file {file.toString}."
-  IO.FS.writeFile s!"TacticExtractionData/{fileName}.json" rawContents
+  let .some fileStem := file.fileStem | IO.throwServerError s!"Invalid file {file.toString}."
+  IO.FS.writeFile s!"TacticExtractionData/{fileStem}.json" rawContents
   IO.println "Results written to file."
   return 0
 
