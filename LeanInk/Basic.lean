@@ -40,13 +40,10 @@ def runAnalysis (file : System.FilePath) (fileContents : String) : IO UInt32 := 
   logInfo "Analyzing..."
   let result ← analyzeInput file fileContents
   logInfo "Outputting..."
-  let rawContents := toJson result |>.pretty
-  let dirEntry : IO.FS.DirEntry := { 
-    root := "TacticExtractionData",
-    fileName := file.toString ++ ".json"
-  }
-  IO.FS.writeFile dirEntry.path rawContents
-  logInfo s!"Results written to file: {dirEntry.path}!"
+  let rawContents := toJson result |>.compress
+  let .some fileName := file.fileName | IO.throwServerError s!"Invalid file {file.toString}."
+  IO.FS.writeFile s!"TacticExtractionData/{fileName}.json" rawContents
+  IO.println "Results written to file."
   return 0
 
 -- EXECUTION
