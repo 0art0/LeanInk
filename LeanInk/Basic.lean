@@ -11,7 +11,7 @@ namespace LeanInk.Analysis
 
 open Lean Elab System
 
-def analyzeInput (file : System.FilePath) (fileContents : String) : IO (List TacticFragmentWithContent) := do
+def analyzeInput (file : System.FilePath) (fileContents : String) : IO (Option <| List TacticFragmentWithContent) := do
   let context := Parser.mkInputContext fileContents file.toString
   let (header, state, messages) ← Parser.parseHeader context
   let fileContents' := 
@@ -28,7 +28,7 @@ def analyzeInput (file : System.FilePath) (fileContents : String) : IO (List Tac
     for msg in messages.toList do
       if msg.severity == .error then
         let _ ← logError <$> msg.toString
-    throw <| IO.userError "Errors during import; aborting"
+    return none
   let commandState := { Command.mkState environment messages with infoState := { enabled := true } }
   let s ← IO.processCommands context' state commandState
   let result ← resolveTacticList s.commandState.infoState.trees.toList
@@ -36,14 +36,12 @@ def analyzeInput (file : System.FilePath) (fileContents : String) : IO (List Tac
   result.mapM <| TacticFragment.withContent fileContents' messages
 
 def runAnalysis (file : System.FilePath) (fileContents : String) : IO UInt32 := do
-  -- logInfo s!"Starting process with lean file: {config.inputFileName}"
   logInfo "Analyzing..."
-  let result ← analyzeInput file fileContents
+  let .some result ← analyzeInput file fileContents | return 1
   logInfo "Outputting..."
   let rawContents := toJson result |>.compress
-  let .some fileStem := file.fileStem | IO.throwServerError s!"Invalid file {file.toString}."
   IO.FS.writeFile s!"TacticExtractionData/{file.components.drop 4 |> String.intercalate "-"}.json" rawContents
-  IO.println s!"Results of \"{fileStem}\" written to file."
+  IO.println s!"Results of \"{file.toString}\" written to file."
   return 0
 
 -- EXECUTION
