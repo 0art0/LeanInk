@@ -40,7 +40,7 @@ def runAnalysis (file : System.FilePath) (fileContents : String) : IO UInt32 := 
   let .some result ← analyzeInput file fileContents | return 1
   logInfo "Outputting..."
   let rawContents := toJson result |>.compress
-  IO.FS.writeFile s!"TacticExtractionData/{file.components.drop 4 |> String.intercalate "-"}.json" rawContents
+  IO.FS.writeFile s!"TacticExtractionData/{file.components.drop 3 |> String.intercalate "-"}.json" rawContents
   IO.println s!"Results of \"{file.toString}\" written to file."
   return 0
 
