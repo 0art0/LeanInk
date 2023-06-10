@@ -57,5 +57,6 @@ def initializeLakeContext (lakeFile : FilePath) (header : Syntax) : IO Unit := d
           initSearchPath (← findSysroot) paths.oleanPath
           logInfo s!"{paths.oleanPath}"
           logInfo s!"Successfully loaded lake search paths"
+    | 1 => IO.println "Exiting `lake` with error code 1."
     | 2 => logInfo s!"No search paths required!"
     | _ => throw <| IO.userError s!"Using lake failed! Make sure that lake is installed!"
