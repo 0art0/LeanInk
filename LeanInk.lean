@@ -1,4 +1,3 @@
-import LeanInk.Analysis
-import LeanInk.Logger
+import LeanInk.Basic
 
-def main := LeanInk.Analysis.exec
+def main := LeanInk.exec
