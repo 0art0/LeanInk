@@ -36,8 +36,8 @@ def process_file(file):
         print(f"ERROR executing LeanInk on {file}: {e}\n")
 
 # Create the `TacticExtraction` folder if it does not already exist
-if not os.path.exists("TacticExtraction"):
-    os.makedirs("TacticExtraction")
+if not os.path.exists("TacticExtractionData"):
+    os.makedirs("TacticExtractionData")
 
 # Concurrent execution of the `leanInk` script as *processes* (not *threads*) using the `concurrent.futures` framework
 with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
