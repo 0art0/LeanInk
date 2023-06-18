@@ -44,4 +44,8 @@ partial def _resolveTactics (ctx? : Option ContextInfo := none) (aux : Array Tac
 /-- Concurrently resolves the tactics for all the `InfoTree`s in the specified array. -/
 def resolveTactics (trees : Array InfoTree) : IO <| Array TacticFragment := do
   let tasks ← BaseIO.toIO <| trees.mapM <| IO.asTask ∘ _resolveTactics none #[]
-  tasks.concatMapM (IO.wait · >>= IO.ofExcept)
+  let mut results := #[]
+  for task in tasks do
+    let tacs ← IO.wait task >>= IO.ofExcept
+    results := results ++ tacs
+  return results
