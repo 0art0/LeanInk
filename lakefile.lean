@@ -13,15 +13,5 @@ lean_exe leanInk where
   root := `LeanInk
   supportInterpreter := true
 
-@[default_target]
-lean_exe tacticExtraction where
-  root := `TacticExtraction
-  supportInterpreter := true
-
-@[default_target]
-lean_exe parallelInk where
-  root := `ParallelInk
-  supportInterpreter := true
-
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git"@"master"
