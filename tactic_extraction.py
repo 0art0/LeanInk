@@ -22,7 +22,7 @@ def find_lean_files(directory):
 # the location of the `Mathlib` source code
 repository_path = "./lake-packages/mathlib/Mathlib/"
 # the `Mathlib` folder path, which can be modified to a specific sub-folder like `Combinatorics/Regularity` or `Data/Int`
-folder_path = "Data/ENat"
+folder_path = "ModelTheory"
 # the maximum number of workers in the concurrent code
 num_workers = 3
 
@@ -31,9 +31,9 @@ def process_file(file):
     command = ['./build/bin/leanInk', file]
     try:
         subprocess.run(command, check=True)
-        print(f"LeanInk executed successfully on {file}")
+        print(f"LeanInk executed successfully on {file}\n")
     except subprocess.CalledProcessError as e:
-        print(f"Error executing LeanInk on {file}: {e}")
+        print(f"ERROR executing LeanInk on {file}: {e}\n")
 
 # Create the `TacticExtraction` folder if it does not already exist
 if not os.path.exists("TacticExtraction"):
