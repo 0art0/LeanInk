@@ -22,7 +22,7 @@ def find_lean_files(directory):
 # the location of the `Mathlib` source code
 repository_path = "./lake-packages/mathlib/Mathlib/"
 # the `Mathlib` folder path, which can be modified to a specific sub-folder like `Combinatorics/Regularity` or `Data/Int`
-folder_path = "Analysis/ODE"
+folder_path = "."
 # the maximum number of workers in the concurrent code
 num_workers = 3
 
