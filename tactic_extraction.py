@@ -11,6 +11,9 @@ Parts of this code were written with help from ChatGPT.
 
 def find_lean_files(directory):
     """Finds all `.lean` files in the specified directory (including sub-folders)."""
+    if not os.path.exists(directory):
+        print("The specified directory " + dir + " does not exist.")
+
     return [os.path.join(root, file) 
         for root, dirs, files in os.walk(directory) 
         for file in files 
@@ -24,12 +27,17 @@ folder_path = "Data/ENat"
 num_workers = 3
 
 def process_file(file):
+    """Attempt to run the `leanInk` script on the specified file."""
     command = ['./build/bin/leanInk', file]
     try:
         subprocess.run(command, check=True)
-        print(f"Command executed successfully on {file}")
+        print(f"LeanInk executed successfully on {file}")
     except subprocess.CalledProcessError as e:
-        print(f"Error executing command on {file}: {e}")
+        print(f"Error executing LeanInk on {file}: {e}")
+
+# Create the `TacticExtraction` folder if it does not already exist
+if not os.path.exists("TacticExtraction"):
+    os.makedirs("TacticExtraction")
 
 # Concurrent execution of the `leanInk` script as *processes* (not *threads*) using the `concurrent.futures` framework
 with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
