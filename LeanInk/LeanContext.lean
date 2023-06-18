@@ -32,7 +32,6 @@ def initializeLakeContext (lakeFile : FilePath) (header : Syntax) : IO Unit := d
     | none => IO.throwServerError s!"lakefile is not a valid file!"
     | some fileName => IO.throwServerError s!"lakefile [{fileName}] not called: lakefile.lean"
   else
-    -- logInfo s!"Loading Lake Context with lakefile ({lakeFile})..."
     let imports := headerToImports header
     let arguments := #[lakePrintPathsCmd] ++ imports.map (toString ·.module)
     let lakeProcess ← Process.spawn {
@@ -53,8 +52,6 @@ def initializeLakeContext (lakeFile : FilePath) (header : Syntax) : IO Unit := d
         | .ok (paths : LeanPaths) => do
           initializeLeanContext
           initSearchPath (← findSysroot) paths.oleanPath
-          -- logInfo s!"{paths.oleanPath}"
-          -- logInfo s!"Successfully loaded lake search paths"
     | 1 => IO.throwServerError "Exiting `lake` with error code 1."
     | 2 => IO.throwServerError s!"No search paths required!"
     | _ => IO.throwServerError s!"Using lake failed! Make sure that lake is installed!"

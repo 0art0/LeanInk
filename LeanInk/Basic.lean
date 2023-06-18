@@ -25,8 +25,6 @@ def analyzeInput (file : System.FilePath) (fileContents : String) : IO <| Array 
   initializeLakeContext lakeFile header
   let options := Options.empty |>.setBool `trace.Elab.info true |>.setBool `tactic.simp.trace true
   let (environment, messages) ← processHeader header options messages context' 0
-  -- logInfo s!"Header: {environment.header.mainModule}"
-  -- logInfo s!"Header: {environment.header.moduleNames}"
   if messages.hasErrors then
     for msg in messages.toList do
       if msg.severity == .error then
@@ -43,9 +41,7 @@ def analyzeInput (file : System.FilePath) (fileContents : String) : IO <| Array 
 
 /-- Analyse and output the tactic fragment data to a file. -/
 def runAnalysis (file : System.FilePath) (fileContents : String) : IO UInt32 := do
-  -- logInfo "Analyzing..."
   let result ← analyzeInput file fileContents
-  -- logInfo "Outputting..."
   let rawContents := toJson result |>.compress
   IO.FS.writeFile s!"TacticExtractionData/{file.components.drop 3 |> String.intercalate "-"}.json" rawContents
   IO.println s!"Results of \"{file.toString}\" written to file."
