@@ -15,6 +15,18 @@ def Lean.Syntax.isExpanded (stx : Syntax) : Bool :=
   | .original .., .original .. => false
   | _, _ => true
 
+/-! ## String manipulation -/
+
+/-- Replace the portion of the string between `firstPos` and `lastPos` with the provided replacement. -/
+def String.replaceSegment (s : String) (firstPos lastPos : String.Pos) (r : String) : String :=
+  s.extract ⟨0⟩ firstPos ++ r ++ s.extract lastPos s.endPos
+
+/-- Replace several segments in a string at once. To avoid relabelling positions, replacements at the end of the string are performed first. -/
+def String.replaceSegments (s : String) (replacements : Array <| String.Pos × String.Pos × String) : String :=
+  -- assumes that the replacements are disjoint
+  let replacements' := replacements.insertionSort <| fun ⟨b, _, _⟩ ⟨_, e', _⟩ ↦ e' ≤ b
+  replacements'.foldl (fun s ⟨b, e, r⟩ ↦ s.replaceSegment b e r) s
+
 namespace LeanInk
 open Lean Elab Meta
 
@@ -50,12 +62,16 @@ def extractSuggestion (msg : Message) : OptionT IO String := do
 
 open FileMap in
 /-- Generates ` TacticFragmentWithContent` from a bare `TacticFragment` using the file contents and associated messages. 
-  If a message matches the position of the tactic fragment exactly, the actual content of the fragment is discarded and replaced with that of the message. -/
-def TacticFragment.withContent (contents : String) (messages : List Message) (fragment : TacticFragment) : IO TacticFragmentWithContent := do
-  let fileMap := ofString contents
-  let msgContent? : Option String ← OptionT.run do
-    let suggestion := messages.find? <| fun msg ↦ 
-      msg.pos == fileMap.toPosition fragment.headPos && 
-      msg.endPos == some (fileMap.toPosition fragment.tailPos)
-    (.ok suggestion : OptionT IO Message) >>= extractSuggestion
-  return ⟨fragment, msgContent?.getD (contents.extract fragment.headPos fragment.tailPos)⟩
+  If a message matches the position of the tactic fragment exactly, the actual content of the fragment is discarded and replaced with that of the message. 
+  The main use case is in replacing `simp` calls with `simp only ...` trace messages that contain the full data of the premises used. -/
+def TacticFragment.withContent (input : String) (messages : List Message) (fragment : TacticFragment) : IO TacticFragmentWithContent := do
+  let fileMap := ofString input
+  let content := input.extract fragment.headPos fragment.tailPos
+  let suggestions ← messages.toArray.filterMapM <| fun msg ↦ OptionT.run do
+     let msgHeadPos := (fileMap.lspPosToUtf8Pos ∘ fileMap.leanPosToLspPos) msg.pos
+     let msgTailPos := (fileMap.lspPosToUtf8Pos ∘ fileMap.leanPosToLspPos) (← .ok msg.endPos)
+     guard <| fragment.headPos ≤ msgHeadPos
+     guard <| msgTailPos ≤ fragment.tailPos  
+     let raw ← extractSuggestion msg
+     return (msgHeadPos - fragment.headPos, msgTailPos - fragment.headPos, raw)
+  return ⟨fragment, content.replaceSegments suggestions⟩
