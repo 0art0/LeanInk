@@ -18,10 +18,7 @@ lean_exe leanInk where
 @[default_target]
 lean_exe depGen where
   root := `Scripts.DependencyGen
-  supportInterpreter := true  
-
-require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git"@"master"
+  supportInterpreter := true
 
 def getCurrentPackage : ScriptM Package := do
   let ws ← Lake.getWorkspace
