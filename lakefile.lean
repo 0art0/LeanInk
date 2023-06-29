@@ -26,11 +26,12 @@ require mathlib from git
 script mkImports do
   let ws ← Lake.getWorkspace
   let [pkg] := ws.packageList.filter (·.dir = ⟨"."⟩) | throw <| IO.userError "Current package not found"
+  IO.println s!"Creating imports for package {pkg.name} ...\n"
   for (libName, _) in pkg.leanLibConfigs do
     let dir ← FilePath.walkDir libName.toString >>= Array.filterM (not <$> ·.isDir)
     let filePathToImport : FilePath → String := fun fp ↦ fp.toString.takeWhile (· != FilePath.extSeparator) |>.map <| 
       fun c ↦ if c = FilePath.pathSeparator then '.' else c
     let imports := dir.foldl (init := "") <| fun s f ↦ s ++ s!"import {filePathToImport f}\n" 
     IO.FS.writeFile (libName.toString ++ ".lean") imports
-
+    IO.println s!"Created imports file for {libName} library."
   return 1
