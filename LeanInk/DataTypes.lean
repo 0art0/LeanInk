@@ -73,7 +73,8 @@ def extractSuggestion (msg : Message) : OptionT IO String := do
 def extractMainTactic (s : String) (env : Environment) : Option String := do
   let stx ← Except.toOption <| Parser.runParserCategory env `tactic s
   let head ← stx.getHead?
-  head.reprint
+  let tac ← head.reprint
+  return tac.trim
 
 open FileMap in
 /-- Generates ` TacticFragmentWithContent` from a bare `TacticFragment` using the file contents and associated messages. 
