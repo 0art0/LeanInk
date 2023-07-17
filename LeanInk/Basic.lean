@@ -37,8 +37,8 @@ def analyzeInput (file : System.FilePath) (fileContents : String) : IO <| Array 
   -- Load the messages in the file
   let messages := s.commandState.messages.msgs.toList.filter (·.endPos.isSome)
   -- Add content to the tactic fragments
-  result.mapM <| TacticFragment.withContent fileContents' messages
-
+  result.mapM <| TacticFragment.withContent fileContents' messages commandState.env
+  
 /-- Analyse and output the tactic fragment data to a file. -/
 def runAnalysis (file : System.FilePath) (fileContents : String) : IO UInt32 := do
   let result ← analyzeInput file fileContents

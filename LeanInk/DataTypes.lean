@@ -32,27 +32,36 @@ open Lean Elab Meta
 
 deriving instance ToJson for String.Pos
 instance (priority := high) : ToJson String.Pos := ⟨(toJson ·.byteIdx)⟩
+instance (priority := high) : FromJson String.Pos where
+  fromJson? json := String.Pos.mk <$> fromJson? (α := Nat) json 
 
 /-! ## Fragments -/
 
 /-- A `Fragment` is a simple structure that describes an interval within the source text. -/
 structure Fragment where
+  /-- The start position of the fragment. -/
   headPos : String.Pos
+  /-- The end position of the fragment. -/
   tailPos : String.Pos
-  deriving Inhabited, ToJson
+  deriving Inhabited, ToJson, FromJson
 
 /-! ## Tactics -/
 
 /-- A `TacticFragment` is a `Fragment` describing a tactic in a Lean file together with the goal states before and after. -/
 structure TacticFragment extends Fragment where
+  /-- The goals before the start position. -/
   goalsBefore : List String
+  /-- The goals after the end position. -/
   goalsAfter : List String
-  deriving Inhabited, ToJson
+  deriving Inhabited, ToJson, FromJson
 
 /-- A `TacticFragmentWithContent` describes not just the position and goals but also the actual content of the tactic. -/
 structure TacticFragmentWithContent extends TacticFragment where
+  /-- The name of the main tactic invoked in the fragment.. -/
+  mainTactic? : Option String
+  /-- The tactic script used in the fragment. -/
   content : String
-  deriving Inhabited, ToJson
+  deriving Inhabited, ToJson, FromJson
 
 /-- Extracting the suggestion text from a "Try this: ..." message in the infoview. -/
 def extractSuggestion (msg : Message) : OptionT IO String := do
@@ -60,11 +69,17 @@ def extractSuggestion (msg : Message) : OptionT IO String := do
   guard <| raw.startsWith "Try this: "
   return raw.drop "Try this: ".length
 
+/-- The name of the main tactic invoked in a line of a tactic block. -/
+def extractMainTactic (s : String) (env : Environment) : Option String := do
+  let stx ← Except.toOption <| Parser.runParserCategory env `tactic s
+  let head ← stx.getHead?
+  head.reprint
+
 open FileMap in
 /-- Generates ` TacticFragmentWithContent` from a bare `TacticFragment` using the file contents and associated messages. 
   If a message matches the position of the tactic fragment exactly, the actual content of the fragment is discarded and replaced with that of the message. 
   The main use case is in replacing `simp` calls with `simp only ...` trace messages that contain the full data of the premises used. -/
-def TacticFragment.withContent (input : String) (messages : List Message) (fragment : TacticFragment) : IO TacticFragmentWithContent := do
+def TacticFragment.withContent (input : String) (messages : List Message) (env : Environment) (fragment : TacticFragment) : IO TacticFragmentWithContent := do
   let fileMap := ofString input
   let content := input.extract fragment.headPos fragment.tailPos
   let suggestions ← messages.toArray.filterMapM <| fun msg ↦ OptionT.run do
@@ -74,4 +89,5 @@ def TacticFragment.withContent (input : String) (messages : List Message) (fragm
      guard <| msgTailPos ≤ fragment.tailPos  
      let raw ← extractSuggestion msg
      return (msgHeadPos - fragment.headPos, msgTailPos - fragment.headPos, raw)
-  return ⟨fragment, content.replaceSegments suggestions⟩
+  let newContent := content.replaceSegments suggestions
+  return ⟨fragment, extractMainTactic newContent env, newContent⟩
