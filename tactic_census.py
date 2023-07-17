@@ -27,7 +27,7 @@ for filename in os.listdir(folder_path):
                     value_counter[tactic_name] += 1
 
 # Prepare the output data as a list of dictionaries
-output_data = [{'value': value, 'count': count} for value, count in value_counter.items()]
+output_data = [{'tactic': value, 'count': count} for value, count in value_counter.items()]
 output_data.sort(key=lambda x: x['count'], reverse=True)
 
 # Write the output data to a JSON file
