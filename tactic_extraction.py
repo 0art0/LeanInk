@@ -24,7 +24,7 @@ repository_path = "./lake-packages/mathlib/Mathlib/"
 # the `Mathlib` folder path, which can be modified to a specific sub-folder like `Combinatorics/Regularity` or `Data/Int`
 folder_path = "."
 # the maximum number of workers in the concurrent code
-num_workers = 3
+num_workers = 5
 
 def process_file(file):
     """Attempt to run the `leanInk` script on the specified file."""
