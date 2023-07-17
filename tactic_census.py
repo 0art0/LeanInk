@@ -22,8 +22,8 @@ for filename in os.listdir(folder_path):
             json_data = json.load(file)
             # Iterate over each object in the JSON array
             for obj in json_data:
-                tactic_name = obj.get('mainTactic')  # Get the value of 'abc' field
-                if tactic_name not in [None, "none"]:
+                tactic_name = obj.get('mainTactic')  # Get the value of 'mainTactic' field
+                if tactic_name is not None:
                     value_counter[tactic_name] += 1
 
 # Prepare the output data as a list of dictionaries
