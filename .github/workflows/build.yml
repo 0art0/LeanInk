@@ -1,70 +1,52 @@
-name: CI
+name: Tactic extraction
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
   workflow_dispatch:
 
 jobs:
   build:
-    name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: ${{ matrix.shell || 'sh' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - name: Ubuntu
-          os: ubuntu-latest
-        - name: macOS
-          os: macos-latest
-        - name: Windows
-          os: windows-latest
-          shell: pwsh
+    name: Extract tactic data
+    runs-on: ubuntu-latest
     steps:
-      # Fix CR/LF mangling on Windows
-      - name: Disable autocrlf in git
-        run: git config --global core.autocrlf false
-
-      # Checkout repository
-      - uses: actions/checkout@v2
-
-      # Install elan with nightly toolchain
-      - name: Install Elan (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: install elan
         run: |
           set -o pipefail
-          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- --default-toolchain none -y
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v1.4.6/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./elan-init -y --default-toolchain none
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
+          echo | source $HOME/.profile && $HOME/.elan/bin/elan --version
 
-      - name: Install Elan (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+      - uses: actions/checkout@v3
+
+    #  - name: bump toolchain
+    #    run: |
+    #       curl -O https://raw.githubusercontent.com/leanprover-community/mathlib4/master/lean-toolchain
+    #       lake update
+    #       git config user.name github-actions
+    #       git config user.email github-actions@github.com
+    #       git add lean-toolchain lake-manifest.json
+    #       git commit -am "Bump `lean-toolchain` to match `Mathlib`"
+    #       git push
+
+      - name: fetch cache
+        run: lake exe cache get
+          
+      - name: build LeanInk
+        run: lake buildp
+
+      - name: extract tactic data
         run: |
-          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- --default-toolchain none -y
-          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+          python3 tactic_extraction.py
+          zip -r tactic_extraction_data.zip TacticExtractionData
 
-      - name: Install Elan (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          curl -O --location https://raw.githubusercontent.com/leanprover/elan/master/elan-init.ps1
-          .\elan-init.ps1 -NoPrompt 1 -DefaultToolchain none
-          echo "$HOME\.elan\bin" >> $env:GITHUB_PATH
+      - name: generate tactic census
+        run: python3 tactic_census.py
 
-      # Build and test
-      - name: Build LeanInk
-        run: lake build
-
-      # Upload artifact
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+      - name: upload artifacts
+        uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.os }}
-          path: build
-
-      - name: Run tests
-        run: lake script run tests
+          name: mathlib-tactic-data
+          path: |
+            tactic_extraction_data.zip
+            tactic_census.json
+            error.log
