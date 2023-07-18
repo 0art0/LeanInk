@@ -3,16 +3,22 @@ import fnmatch
 import sys
 import subprocess
 import concurrent.futures
+import logging
 
 """
 This script attempts to run the tactic extraction script (`./build/bin/leanInk`) over all files of `Mathlib` in parallel.
 Parts of this code were written with help from ChatGPT.
 """
 
+# The logging settings
+logging.basicConfig(filename="error.log", format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
 def find_lean_files(directory):
     """Finds all `.lean` files in the specified directory (including sub-folders)."""
     if not os.path.exists(directory):
-        print("The specified directory " + dir + " does not exist.")
+        logger.exception("The specified directory " + directory + " does not exist.")
 
     return [os.path.join(root, file) 
         for root, dirs, files in os.walk(directory) 
@@ -24,16 +30,16 @@ repository_path = "./lake-packages/mathlib/Mathlib/"
 # the `Mathlib` folder path, which can be modified to a specific sub-folder like `Combinatorics/Regularity` or `Data/Int`
 folder_path = "."
 # the maximum number of workers in the concurrent code
-num_workers = 5
+num_workers = 10
 
 def process_file(file):
     """Attempt to run the `leanInk` script on the specified file."""
     command = ['./build/bin/leanInk', file]
     try:
         subprocess.run(command, check=True)
-        print(f"LeanInk executed successfully on {file}\n")
+        logger.info(f"LeanInk executed successfully on {file}.\n")
     except subprocess.CalledProcessError as e:
-        print(f"ERROR executing LeanInk on {file}: {e}\n")
+        logger.exception(f"ERROR executing LeanInk on {file}: {e}\n")
 
 # Create the `TacticExtraction` folder if it does not already exist
 if not os.path.exists("TacticExtractionData"):
