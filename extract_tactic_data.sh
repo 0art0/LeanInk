@@ -22,4 +22,8 @@ python tactic_extraction.py
 echo && echo Running tactic census script ...
 python tactic_census.py
 
+# Zipping the results
+echo && echo Zipping the results ...
+zip -r tactic_extraction_data.zip TacticExtractionData
+
 echo && echo Finished.
