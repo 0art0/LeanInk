@@ -32,7 +32,7 @@ jobs:
         run: lake exe cache get
           
       - name: build LeanInk
-        run: lake buildp
+        run: lake build
 
       - name: extract tactic data
         run: |
