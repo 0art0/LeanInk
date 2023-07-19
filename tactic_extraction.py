@@ -11,7 +11,7 @@ Parts of this code were written with help from ChatGPT.
 """
 
 # The logging settings
-logging.basicConfig(filename="error.log", format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename="tactic_extraction.log", format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
