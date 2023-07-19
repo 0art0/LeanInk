@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+echo "Starting Mathlib tactic extraction ..." && echo
+
 # Bump toolchain to the latest version
 echo Fetching latest Lean toolchain ...
 curl -O https://raw.githubusercontent.com/leanprover-community/mathlib4/master/lean-toolchain
@@ -29,7 +31,7 @@ zip -r tactic_extraction_data.zip TacticExtractionData
 echo && echo "
     Tactic extraction complete.
 
-    The tactic extraction results are in `tactic_extraction_data.zip`. 
-    The tactic census data is stored in `tactic_census.json`. 
-    The log file for the tactic extraction is `tactic_extraction.log`.
+    The tactic extraction results are in \`tactic_extraction_data.zip\`. 
+    The tactic census data is stored in \`tactic_census.json\`. 
+    The log file for the tactic extraction is \`tactic_extraction.log\`.
     "
