@@ -5,6 +5,8 @@
 
 This branch of `LeanInk` is a bare-bones version meant for extracting tactic data from `mathlib4`. It was derived from the original `LeanInk` source by iteratively simplifying and customising the code for tactic data extraction.
 
+To extract the tactic data from the latest version of `Mathlib`, run the `extract_tactic_data` script as `bash extract_tactic_data.sh . 4`. The first argument indicates the directory relative to the main `Mathlib` folder, and the second indicates the number of threads to use while running the tactic extraction in parallel.
+
 LeanInk is a command line helper tool for [Alectryon](https://github.com/cpitclaudel/alectryon) which aims to ease the integration and support of [Lean 4](https://github.com/leanprover/lean4).
 Alectryon uses the information provided by LeanInk to create a static code visualization for Lean 4 code.
 For more information about Alectryon make sure to take a look at their repository.
@@ -46,6 +48,8 @@ mkdir TacticExtractionData
 ---
 
 However, in practice the code is designed to generate tactic-step data in bulk from `mathlib4` files. The Python script `tactic_extraction.py` runs the `leanInk` script concurrently on the entire `mathlib4` directory (using the version specified in the `lakefile` or `manifest.json` file), handling the creation of the `TacticExtractionData` folder in the process. The variable `num_workers` in the `tactic_extraction.py` file can be modified to set the maximum number of processes that are allowed to run in parallel.
+
+The entire tactic extraction process is bundled up into the `extract_tactic_data.sh` script in the top-level directory. Instructions for use are mentioned in the second paragraph of this `README` file.
 
 # Contributing
 
