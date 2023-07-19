@@ -12,6 +12,10 @@ lake update
 echo && echo Fetching cache ...
 lake exe cache get
 
+# Building `mathlib`, just in case getting the cache fails
+echo && echo Attempting to build `mathlib` ...
+lake build mathlib
+
 # Build the repository
 echo && echo Building repository ...
 lake build
