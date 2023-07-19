@@ -16,14 +16,20 @@ lake build
 
 # Run the tactic extraction script
 echo && echo Running tactic extraction script ...
-python tactic_extraction.py
+python3 tactic_extraction.py
 
 # Run the tactic census script
 echo && echo Running tactic census script ...
-python tactic_census.py
+python3 tactic_census.py
 
 # Zipping the results
 echo && echo Zipping the results ...
 zip -r tactic_extraction_data.zip TacticExtractionData
 
-echo && echo Finished.
+echo && echo "
+    Tactic extraction complete.
+
+    The tactic extraction results are in `tactic_extraction_data.zip`. 
+    The tactic census data is stored in `tactic_census.json`. 
+    The log file for the tactic extraction is `tactic_extraction.log`.
+    "
