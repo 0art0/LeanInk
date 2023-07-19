@@ -18,7 +18,7 @@ lake build
 
 # Run the tactic extraction script
 echo && echo Running tactic extraction script ...
-python3 tactic_extraction.py
+python3 tactic_extraction.py $1 $2
 
 # Run the tactic census script
 echo && echo Running tactic census script ...

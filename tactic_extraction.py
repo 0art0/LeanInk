@@ -28,9 +28,9 @@ def find_lean_files(directory):
 # the location of the `Mathlib` source code
 repository_path = "./lake-packages/mathlib/Mathlib/"
 # the `Mathlib` folder path, which can be modified to a specific sub-folder like `Combinatorics/Regularity` or `Data/Int`
-folder_path = "."
+folder_path = str(sys.argv[1])
 # the maximum number of workers in the concurrent code
-num_workers = 10
+num_workers = int(sys.argv[2])
 
 def process_file(file):
     """Attempt to run the `leanInk` script on the specified file."""
