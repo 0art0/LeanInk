@@ -15,6 +15,34 @@ def Lean.Syntax.isExpanded (stx : Syntax) : Bool :=
   | .original .., .original .. => false
   | _, _ => true
 
+partial def Lean.Syntax.findAll (stx : Syntax) (p : Syntax → Bool) : Array Syntax :=
+  let r := stx.getArgs.concatMap (·.findAll p)
+  if p stx then
+    r.push stx
+  else r
+
+partial def Lean.Syntax.findAllM [Monad M] (stx : Syntax) 
+    (p : Syntax → M Bool) : M (Array Syntax) := do
+  let r ← stx.getArgs.concatMapM (·.findAllM p)
+  if ← p stx then
+    return r.push stx
+  else return r
+
+def Lean.Syntax.getIdents (stx : Syntax) : TSyntaxArray `ident :=
+  stx.findAll (·.isOfKind `ident) |>.map .mk
+
+def Lean.Syntax.getTerms (stx : Syntax) : TSyntaxArray `term :=
+  stx.findAll (·.getKind.componentsRev.contains `Term) |>.map .mk
+
+#eval show Lean.MetaM _ from do
+  let stx ← `((1 + 2))
+  return stx.raw.getTerms.map (·.raw.reprint.get!)
+
+#eval show Lean.MetaM _ from do 
+  let stx ← `(simp [Nat.add_comm, ← succ_eq_add_one, f 2])
+  let subterms := stx.raw.findAll (`Term ∈ ·.getKind.components)
+  subterms.mapM fun s ↦ pure (s.reprint.get!, s.getKind) 
+
 /-! ## String manipulation -/
 
 /-- Replace the portion of the string between `firstPos` and `lastPos` with the provided replacement. -/
@@ -63,6 +91,14 @@ structure TacticFragmentWithContent extends TacticFragment where
   content : String
   deriving Inhabited, ToJson, FromJson
 
+/-- A `TacticFragmentWithIngredients` captures the *ingredients* that go into the tactic invocation,
+    particularly the identifiers and terms used. -/
+structure TacticFragmentWithIngredients extends TacticFragmentWithContent where
+  /-- The identifiers used in the tactic invocation. -/
+  identifiers : TSyntaxArray `ident
+  /-- The terms used in the tactic invocation. -/
+  terms : TSyntaxArray `term
+
 /-- Extracting the suggestion text from a "Try this: ..." message in the infoview. -/
 def extractSuggestion (msg : Message) : OptionT IO String := do
   let raw ← msg.data.toString
@@ -92,3 +128,5 @@ def TacticFragment.withContent (input : String) (messages : List Message) (env :
      return (msgHeadPos - fragment.headPos, msgTailPos - fragment.headPos, raw)
   let newContent := content.replaceSegments suggestions
   return ⟨fragment, extractMainTactic newContent env, newContent⟩
+
+def TacticFragmentWithContent.withIngredients (fragment : TacticFragmentWithContent) : TacticFragmentWithIngredients := sorry
