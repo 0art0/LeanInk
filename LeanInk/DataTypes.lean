@@ -78,7 +78,7 @@ structure TacticFragment extends Fragment where
 /-- A `TacticFragmentWithContent` describes not just the position and goals but also the actual content of the tactic. -/
 structure TacticFragmentWithContent extends TacticFragment where
   /-- The name of the main tactic invoked in the fragment.. -/
-  mainTactic? : Option String
+  mainTactic : String
   /-- The tactic script used in the fragment. -/
   content : String
   deriving Inhabited, ToJson, FromJson
@@ -97,18 +97,21 @@ def extractSuggestion (msg : Message) : OptionT IO String := do
   guard <| raw.startsWith "Try this: "
   return raw.drop "Try this: ".length
 
-/-- The name of the main tactic invoked in a line of a tactic block. -/
-def extractMainTactic (s : String) (env : Environment) : Option String := do
-  let stx ← Except.toOption <| Parser.runParserCategory env `tactic s
-  let head ← stx.getHead?
-  let tac ← head.reprint
-  return tac.trim
+/-- The name of the main tactic invoked in a line of a tactic block, together with its main ingredients (identifiers and terms). -/
+def extractMainTacticAndIngredients (s : String) (env : Environment) : String × TSyntaxArray `ident × TSyntaxArray `term :=
+  Option.getD do
+    let stx ← Except.toOption <| Parser.runParserCategory env `tactic s
+    let head ← stx.getHead?
+    let tac ← head.reprint
+    return ⟨tac.trim, stx.getIdents, stx.getTerms env⟩ 
+  ⟨"", #[], #[]⟩
 
 open FileMap in
-/-- Generates ` TacticFragmentWithContent` from a bare `TacticFragment` using the file contents and associated messages. 
+/-- Generates ` TacticFragmentWIthIngredients` from a bare `TacticFragment` using the file contents and associated messages. 
   If a message matches the position of the tactic fragment exactly, the actual content of the fragment is discarded and replaced with that of the message. 
   The main use case is in replacing `simp` calls with `simp only ...` trace messages that contain the full data of the premises used. -/
-def TacticFragment.withContent (input : String) (messages : List Message) (env : Environment) (fragment : TacticFragment) : IO TacticFragmentWithContent := do
+def TacticFragment.withIngredients (input : String) (messages : List Message) (env : Environment) 
+    (fragment : TacticFragment) : IO TacticFragmentWithIngredients := do
   let fileMap := ofString input
   let content := input.extract fragment.headPos fragment.tailPos
   let suggestions ← messages.toArray.filterMapM <| fun msg ↦ OptionT.run do
@@ -119,6 +122,9 @@ def TacticFragment.withContent (input : String) (messages : List Message) (env :
      let raw ← extractSuggestion msg
      return (msgHeadPos - fragment.headPos, msgTailPos - fragment.headPos, raw)
   let newContent := content.replaceSegments suggestions
-  return ⟨fragment, extractMainTactic newContent env, newContent⟩
-
-def TacticFragmentWithContent.withIngredients (fragment : TacticFragmentWithContent) : TacticFragmentWithIngredients := sorry
+  let ⟨tac, idents, terms⟩ := extractMainTacticAndIngredients newContent env
+  return { fragment with
+           mainTactic := tac, 
+           content := newContent,
+           identifiers := idents,
+           terms := terms }
