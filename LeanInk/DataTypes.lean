@@ -35,6 +35,17 @@ def Lean.Syntax.getTerms (stx : Syntax) (env : Environment) : TSyntaxArray `term
       stx.findAll (termKinds.contains ·.getKind) |>.map .mk
     | none => #[]
 
+open Lean in
+instance : ToJson Syntax where
+  toJson stx := 
+    match stx.reprint with
+      | some str => toJson str
+      | none => .null
+
+open Lean in
+instance : ToJson (TSyntax k) where
+  toJson tstx := toJson tstx.raw
+
 /-! ## String manipulation -/
 
 /-- Replace the portion of the string between `firstPos` and `lastPos` with the provided replacement. -/
@@ -90,6 +101,7 @@ structure TacticFragmentWithIngredients extends TacticFragmentWithContent where
   identifiers : TSyntaxArray `ident
   /-- The terms used in the tactic invocation. -/
   terms : TSyntaxArray `term
+deriving Inhabited, ToJson
 
 /-- Extracting the suggestion text from a "Try this: ..." message in the infoview. -/
 def extractSuggestion (msg : Message) : OptionT IO String := do
