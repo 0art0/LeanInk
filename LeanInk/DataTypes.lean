@@ -39,7 +39,7 @@ open Lean in
 instance : ToJson Syntax where
   toJson stx := 
     match stx.reprint with
-      | some str => toJson str
+      | some str => toJson str.trim
       | none => .null
 
 open Lean in
