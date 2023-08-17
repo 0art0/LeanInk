@@ -15,12 +15,14 @@ def Lean.Syntax.isExpanded (stx : Syntax) : Bool :=
   | .original .., .original .. => false
   | _, _ => true
 
+/-- Traverse a syntax tree, gathering all sub-trees satisfying property `p`. -/
 partial def Lean.Syntax.findAll (stx : Syntax) (p : Syntax → Bool) : Array Syntax :=
   let r := stx.getArgs.concatMap (·.findAll p)
   if p stx then
     r.push stx
   else r
 
+/-- Monadic traversal of a syntax tree, gathering all sub-trees satisfying property `p`. -/
 partial def Lean.Syntax.findAllM [Monad M] (stx : Syntax) 
     (p : Syntax → M Bool) : M (Array Syntax) := do
   let r ← stx.getArgs.concatMapM (·.findAllM p)
@@ -28,20 +30,18 @@ partial def Lean.Syntax.findAllM [Monad M] (stx : Syntax)
     return r.push stx
   else return r
 
+/-- All identifiers occurring in a given `Syntax` object. -/
 def Lean.Syntax.getIdents (stx : Syntax) : TSyntaxArray `ident :=
   stx.findAll (·.isOfKind `ident) |>.map .mk
 
-def Lean.Syntax.getTerms (stx : Syntax) : TSyntaxArray `term :=
-  stx.findAll (·.getKind.componentsRev.contains `Term) |>.map .mk
-
-#eval show Lean.MetaM _ from do
-  let stx ← `((1 + 2))
-  return stx.raw.getTerms.map (·.raw.reprint.get!)
-
-#eval show Lean.MetaM _ from do 
-  let stx ← `(simp [Nat.add_comm, ← succ_eq_add_one, f 2])
-  let subterms := stx.raw.findAll (`Term ∈ ·.getKind.components)
-  subterms.mapM fun s ↦ pure (s.reprint.get!, s.getKind) 
+open Lean.Parser in
+/-- All terms occurring in a given `Syntax` object. -/
+def Lean.Syntax.getTerms (stx : Syntax) (env : Environment) : TSyntaxArray `term :=
+  match Parser.getCategory (parserExtension.getState env).categories `term with
+    | some termCat =>
+      let termKinds := termCat.kinds
+      stx.findAll (termKinds.contains ·.getKind) |>.map .mk
+    | none => #[]
 
 /-! ## String manipulation -/
 
