@@ -6,7 +6,7 @@ import concurrent.futures
 import logging
 
 """
-This script attempts to run the tactic extraction script (`./build/bin/leanInk`) over all files of `Mathlib` in parallel.
+This script attempts to run the tactic extraction script (`leanInk`) over all files of `Mathlib` in parallel.
 Parts of this code were written with help from ChatGPT.
 """
 
@@ -34,7 +34,7 @@ num_workers = int(sys.argv[2])
 
 def process_file(file):
     """Attempt to run the `leanInk` script on the specified file."""
-    command = ['./build/bin/leanInk', file]
+    command = ['lake', 'exe', 'leanInk', file]
     try:
         subprocess.run(command, check=True)
         logger.info(f"LeanInk executed successfully on {file}.\n")
