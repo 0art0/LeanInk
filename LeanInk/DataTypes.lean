@@ -22,14 +22,6 @@ partial def Lean.Syntax.findAll (stx : Syntax) (p : Syntax → Bool) : Array Syn
     r.push stx
   else r
 
-/-- Monadic traversal of a syntax tree, gathering all sub-trees satisfying property `p`. -/
-partial def Lean.Syntax.findAllM [Monad M] (stx : Syntax) 
-    (p : Syntax → M Bool) : M (Array Syntax) := do
-  let r ← stx.getArgs.concatMapM (·.findAllM p)
-  if ← p stx then
-    return r.push stx
-  else return r
-
 /-- All identifiers occurring in a given `Syntax` object. -/
 def Lean.Syntax.getIdents (stx : Syntax) : TSyntaxArray `ident :=
   stx.findAll (·.isOfKind `ident) |>.map .mk
