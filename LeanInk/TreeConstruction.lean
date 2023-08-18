@@ -1,6 +1,7 @@
 structure Range (α) [LE α] where
   start : α
   stop : α
+deriving Repr
 
 instance [Inhabited α] [LE α] : Inhabited (Range α) where
   default := ⟨default, default⟩
@@ -36,6 +37,7 @@ def Ranged.contains [Ranged α] (a a' : α) : Bool :=
 
 inductive Tree (α : Type _) where
   | node (label : α) (children : Array <| Tree α)
+deriving Repr
 
 namespace Tree
 
@@ -78,4 +80,3 @@ end
 def Array.toTrees [Inhabited α] [Ranged α] : Array α → Array (Tree α) :=
   Array.foldl (init := #[]) fun trees elem ↦ 
     insertInTreeArray elem trees
-    
