@@ -2,6 +2,9 @@ structure Range (α) [LE α] where
   start : α
   stop : α
 
+instance [Inhabited α] [LE α] : Inhabited (Range α) where
+  default := ⟨default, default⟩
+
 def Range.contains [LE α] (r r' : Range α) :=
   r.start ≤ r'.start ∧ r'.stop ≤ r.stop
 
@@ -12,14 +15,22 @@ def Range.contains' [LE α] [DecidableRel LE.le (α := α)] (r r' : Range α) : 
   r.contains r'
 
 
-class Ranged (α β) [LE β] where
-  range : α → Range β 
+class Ranged (α) where
+  tgt : Type _
+  tgtLE : LE tgt
+  range : α → Range tgt
 
-def Ranged.contains [LE β] [Ranged α β] (a a' : α) :=
-  Range.contains (α := β) (Ranged.range a) (Ranged.range a')
+instance [Ranged α] : LE (Ranged.tgt α) := Ranged.tgtLE (α := α)
 
-def Ranged.contains' [LE β] [DecidableRel LE.le (α := β)] [Ranged α β] (a a' : α) :=
-  Range.contains' (α := β) (Ranged.range a) (Ranged.range a')
+instance [LE α] : Ranged (Range α) where
+  range := id
+
+def Ranged.contains [Ranged α] (a a' : α) :=
+  Range.contains (Ranged.range a) (Ranged.range a')
+
+def Ranged.contains' [Ranged α] [DecidableRel <| LE.le (α := tgt α)] (a a' : α) :=
+  Range.contains' (Ranged.range a) (Ranged.range a')
+
 
 inductive Tree (α : Type _) where
   | node (label : α) (children : Array <| Tree α)
@@ -46,7 +57,7 @@ end Tree
 
 mutual
 
-variable {α β} [Inhabited α] [LE β] [DecidableRel LE.le (α := β)] [Ranged α β]
+variable {α} [Inhabited α] [Ranged α] [DecidableRel <| LE.le (α := tgt α)] 
 
 open Ranged
 
@@ -54,7 +65,7 @@ partial def insertInTree (elem : α) : Tree α → Tree α
   | .node label children => .node label (insertInTreeArray elem children)
 
 partial def insertInTreeArray (elem : α) (τs : Array <| Tree α) : Array <| Tree α :=
-  match τs.findIdx? (contains' (β := β) ·.label elem) with
+  match τs.findIdx? (contains' ·.label elem) with
     | some idx =>
       let τ := τs.get! idx
       τs.set! idx (insertInTree elem τ)
@@ -62,8 +73,8 @@ partial def insertInTreeArray (elem : α) (τs : Array <| Tree α) : Array <| Tr
 
 end
 
-variable {α β} [Inhabited α] [LE β] [DecidableRel LE.le (α := β)] [Ranged α β]
+variable {α} [Inhabited α] [Ranged α] [DecidableRel <| LE.le (α := Ranged.tgt α)] 
 
 def Array.toTrees : Array α → Array (Tree α) :=
   Array.foldl (init := #[]) fun trees elem ↦ 
-    insertInTreeArray (β := β) elem trees
+    insertInTreeArray elem trees
