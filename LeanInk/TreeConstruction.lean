@@ -18,17 +18,19 @@ def Range.contains' [LE α] [DecidableRel LE.le (α := α)] (r r' : Range α) : 
 class Ranged (α) where
   tgt : Type _
   tgtLE : LE tgt
+  tgtLEdec : DecidableRel tgtLE.le
   range : α → Range tgt
 
 instance [Ranged α] : LE (Ranged.tgt α) := Ranged.tgtLE (α := α)
+instance [Ranged α] : DecidableRel (LE.le (α := Ranged.tgt α)) := Ranged.tgtLEdec (α := α)
 
-instance [LE α] : Ranged (Range α) where
+instance [LE α] [DecidableRel (LE.le (α := α))] : Ranged (Range α) where
+  tgt := α
+  tgtLE := by assumption
+  tgtLEdec := by assumption
   range := id
 
-def Ranged.contains [Ranged α] (a a' : α) :=
-  Range.contains (Ranged.range a) (Ranged.range a')
-
-def Ranged.contains' [Ranged α] [DecidableRel <| LE.le (α := tgt α)] (a a' : α) :=
+def Ranged.contains [Ranged α] (a a' : α) : Bool :=
   Range.contains' (Ranged.range a) (Ranged.range a')
 
 
@@ -57,7 +59,7 @@ end Tree
 
 mutual
 
-variable {α} [Inhabited α] [Ranged α] [DecidableRel <| LE.le (α := tgt α)] 
+variable {α} [Inhabited α] [Ranged α]
 
 open Ranged
 
@@ -65,7 +67,7 @@ partial def insertInTree (elem : α) : Tree α → Tree α
   | .node label children => .node label (insertInTreeArray elem children)
 
 partial def insertInTreeArray (elem : α) (τs : Array <| Tree α) : Array <| Tree α :=
-  match τs.findIdx? (contains' ·.label elem) with
+  match τs.findIdx? (contains ·.label elem) with
     | some idx =>
       let τ := τs.get! idx
       τs.set! idx (insertInTree elem τ)
@@ -73,8 +75,7 @@ partial def insertInTreeArray (elem : α) (τs : Array <| Tree α) : Array <| Tr
 
 end
 
-variable {α} [Inhabited α] [Ranged α] [DecidableRel <| LE.le (α := Ranged.tgt α)] 
-
-def Array.toTrees : Array α → Array (Tree α) :=
+def Array.toTrees [Inhabited α] [Ranged α] : Array α → Array (Tree α) :=
   Array.foldl (init := #[]) fun trees elem ↦ 
     insertInTreeArray elem trees
+    
