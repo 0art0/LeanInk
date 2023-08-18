@@ -23,8 +23,8 @@ partial def Lean.Syntax.findAll (stx : Syntax) (p : Syntax → Bool) : Array Syn
   else r
 
 /-- All identifiers occurring in a given `Syntax` object. -/
-def Lean.Syntax.getIdents (stx : Syntax) : TSyntaxArray `ident :=
-  stx.findAll (·.isOfKind `ident) |>.map .mk
+def Lean.Syntax.getIdents (stx : Syntax) (env : Environment) : TSyntaxArray `ident :=
+  stx.findAll (·.isOfKind `ident) |>.filter (env.contains ·.getId) |>.map .mk
 
 open Lean.Parser in
 /-- All terms occurring in a given `Syntax` object. -/
@@ -115,7 +115,7 @@ def extractMainTacticAndIngredients (s : String) (env : Environment) : String ×
     let stx ← Except.toOption <| Parser.runParserCategory env `tactic s
     let head ← stx.getHead?
     let tac ← head.reprint
-    return ⟨tac.trim, stx.getIdents, stx.getTerms env⟩ 
+    return ⟨tac.trim, stx.getIdents env, stx.getTerms env⟩ 
   ⟨"", #[], #[]⟩
 
 open FileMap in
