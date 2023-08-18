@@ -1,5 +1,3 @@
-import LeanInk.DataTypes
-
 structure Range (α) [LE α] where
   start : α
   stop : α
@@ -37,9 +35,14 @@ def label : Tree α → α
 def children : Tree α → Array (Tree α)
   | .node _ children => children
 
--- def fold (init : β) (φ : β → Tree α → β) : Tree α →   
+partial def map [Inhabited β] (φ : α → β) : Tree α → Tree β
+  | .node label children => .node (φ label) (children.map <| map φ)
+
+partial def fold [Inhabited β] (φ : α → Array β → β) : Tree α → β
+  | .node label children => φ label (children.map <| fold φ)
 
 end Tree
+
 
 mutual
 
@@ -58,3 +61,9 @@ partial def insertInTreeArray (elem : α) (τs : Array <| Tree α) : Array <| Tr
     | none => τs.push <| .node elem #[]
 
 end
+
+variable {α β} [Inhabited α] [LE β] [DecidableRel LE.le (α := β)] [Ranged α β]
+
+def Array.toTrees : Array α → Array (Tree α) :=
+  Array.foldl (init := #[]) fun trees elem ↦ 
+    insertInTreeArray (β := β) elem trees
