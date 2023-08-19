@@ -70,14 +70,13 @@ partial def insertInTree (elem : α) : Tree α → Tree α
 
 partial def insertInTreeArray (elem : α) (τs : Array <| Tree α) : Array <| Tree α :=
   match τs.findIdx? (contains ·.label elem) with
-    | some idx =>
-      let τ := τs.get! idx
-      τs.set! idx (insertInTree elem τ)
-    | none => 
-      if τs.all (contains elem ·.label) then
-        #[.node elem τs]
-      else
-        τs.push <| .node elem #[]
+  | some idx =>
+    let τ := τs.get! idx
+    τs.set! idx (insertInTree elem τ)
+  | none =>
+    match τs.filter (contains elem ·.label) with
+    | #[] => τs.push <| .node elem #[]
+    | τs' => τs.filter (¬contains elem ·.label) |>.push (.node elem τs')
 
 end
 
