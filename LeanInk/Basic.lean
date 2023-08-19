@@ -11,7 +11,7 @@ open Lean Elab System
 /-! ## Analysis -/
 
 /-- Extracts the list of `TacticFragmentWithContent`s from the specified file. -/
-def analyzeInput (file : System.FilePath) (fileContents : String) : IO <| Array TacticFragmentWithIngredients := do
+def analyzeInput (file : System.FilePath) (fileContents : String) : IO <| Array TacticFragmentWithEventualIngredients := do
   -- Parse the header of the provided file
   let context := Parser.mkInputContext fileContents file.toString
   let (header, state, messages) ← Parser.parseHeader context
@@ -37,7 +37,8 @@ def analyzeInput (file : System.FilePath) (fileContents : String) : IO <| Array 
   -- Load the messages in the file
   let messages := s.commandState.messages.msgs.toList.filter (·.endPos.isSome)
   -- Add content to the tactic fragments
-  result.mapM <| TacticFragment.withIngredients fileContents' messages commandState.env
+  let resultWithIngredients ← result.mapM <| TacticFragment.withIngredients fileContents' messages commandState.env
+  return withEventualIngredients resultWithIngredients
   
 /-- Analyse and output the tactic fragment data to a file. -/
 def runAnalysis (file : System.FilePath) (fileContents : String) : IO UInt32 := do
