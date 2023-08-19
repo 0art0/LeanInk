@@ -1,4 +1,5 @@
 import Lean
+import LeanInk.TreeConstruction
 
 /-!
 # Datatypes
@@ -76,6 +77,10 @@ structure Fragment where
   tailPos : String.Pos
   deriving Inhabited, ToJson, FromJson
 
+instance : Ranged Fragment where
+  tgt := Nat
+  range fragment := ⟨fragment.headPos.byteIdx, fragment.tailPos.byteIdx⟩
+
 /-! ## Tactics -/
 
 /-- A `TacticFragment` is a `Fragment` describing a tactic in a Lean file together with the goal states before and after. -/
@@ -86,6 +91,9 @@ structure TacticFragment extends Fragment where
   goalsAfter : List String
   deriving Inhabited, ToJson, FromJson
 
+instance : Ranged TacticFragment where
+  range fragment := Ranged.range fragment.toFragment
+
 /-- A `TacticFragmentWithContent` describes not just the position and goals but also the actual content of the tactic. -/
 structure TacticFragmentWithContent extends TacticFragment where
   /-- The name of the main tactic invoked in the fragment.. -/
@@ -93,6 +101,9 @@ structure TacticFragmentWithContent extends TacticFragment where
   /-- The tactic script used in the fragment. -/
   content : String
   deriving Inhabited, ToJson, FromJson
+
+instance : Ranged TacticFragmentWithContent where
+  range fragment := Ranged.range fragment.toFragment
 
 /-- A `TacticFragmentWithIngredients` captures the *ingredients* that go into the tactic invocation,
     particularly the identifiers and terms used. -/
@@ -102,6 +113,16 @@ structure TacticFragmentWithIngredients extends TacticFragmentWithContent where
   /-- The terms used in the tactic invocation. -/
   terms : TSyntaxArray `term
 deriving Inhabited, ToJson
+
+instance : Ranged TacticFragmentWithIngredients where
+  range fragment := Ranged.range fragment.toFragment
+
+structure TacticFragmentWithEventualIngredients extends TacticFragmentWithIngredients where
+  eventualIdentifiers : TSyntaxArray `ident
+  eventualTerms : TSyntaxArray `term
+
+instance : Ranged TacticFragmentWithEventualIngredients where
+  range fragment := Ranged.range fragment.toFragment
 
 /-- Extracting the suggestion text from a "Try this: ..." message in the infoview. -/
 def extractSuggestion (msg : Message) : OptionT IO String := do
@@ -140,3 +161,13 @@ def TacticFragment.withIngredients (input : String) (messages : List Message) (e
            content := newContent,
            identifiers := idents,
            terms := terms }
+
+def withEventualIngredients (fragments : Array TacticFragmentWithIngredients) : Array TacticFragmentWithEventualIngredients :=
+  fragments.toTrees.concatMap <| Tree.fold 
+    fun fragment children ↦
+      let childrenFlat := children.concatMap id
+      childrenFlat.push { 
+        fragment with
+        eventualIdentifiers := childrenFlat.concatMap (·.eventualIdentifiers) ++ fragment.identifiers,
+        eventualTerms := childrenFlat.concatMap (·.eventualTerms) ++ fragment.terms
+      }
