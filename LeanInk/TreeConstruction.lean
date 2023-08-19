@@ -73,7 +73,11 @@ partial def insertInTreeArray (elem : α) (τs : Array <| Tree α) : Array <| Tr
     | some idx =>
       let τ := τs.get! idx
       τs.set! idx (insertInTree elem τ)
-    | none => τs.push <| .node elem #[]
+    | none => 
+      if τs.all (contains elem ·.label) then
+        #[.node elem τs]
+      else
+        τs.push <| .node elem #[]
 
 end
 
