@@ -18,8 +18,8 @@ def Range.contains' [LE α] [DecidableRel LE.le (α := α)] (r r' : Range α) : 
 
 class Ranged (α) where
   tgt : Type _
-  tgtLE : LE tgt
-  tgtLEdec : DecidableRel tgtLE.le
+  tgtLE : LE tgt := by infer_instance
+  tgtLEdec : DecidableRel tgtLE.le := by infer_instance
   range : α → Range tgt
 
 instance [Ranged α] : LE (Ranged.tgt α) := Ranged.tgtLE (α := α)
@@ -27,8 +27,6 @@ instance [Ranged α] : DecidableRel (LE.le (α := Ranged.tgt α)) := Ranged.tgtL
 
 instance [LE α] [DecidableRel (LE.le (α := α))] : Ranged (Range α) where
   tgt := α
-  tgtLE := by assumption
-  tgtLEdec := by assumption
   range := id
 
 def Ranged.contains [Ranged α] (a a' : α) : Bool :=
