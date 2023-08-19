@@ -43,7 +43,7 @@ def analyzeInput (file : System.FilePath) (fileContents : String) : IO <| Array 
 /-- Analyse and output the tactic fragment data to a file. -/
 def runAnalysis (file : System.FilePath) (fileContents : String) : IO UInt32 := do
   let result ← analyzeInput file fileContents
-  let rawContents := toJson result |>.compress
+  let rawContents := toJson result |>.pretty
   IO.FS.writeFile s!"TacticExtractionData/{file.components.drop 3 |> String.intercalate "-"}.json" rawContents
   IO.println s!"Results of \"{file.toString}\" written to file."
   return 0
