@@ -120,6 +120,7 @@ instance : Ranged TacticFragmentWithIngredients where
 structure TacticFragmentWithEventualIngredients extends TacticFragmentWithIngredients where
   eventualIdentifiers : TSyntaxArray `ident
   eventualTerms : TSyntaxArray `term
+deriving Inhabited, ToJson
 
 instance : Ranged TacticFragmentWithEventualIngredients where
   range fragment := Ranged.range fragment.toFragment
